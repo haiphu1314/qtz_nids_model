@@ -29,6 +29,7 @@
         "stdint.h": "c",
         "__bit_reference": "c",
         "ios": "c",
-        "nmmintrin.h": "c"
+        "nmmintrin.h": "c",
+        "tnn_model.h": "c"
     }
 }

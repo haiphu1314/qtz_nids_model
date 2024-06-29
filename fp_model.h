@@ -10,7 +10,6 @@ typedef struct {
 
 FP_Layer* fp_read_model(const char* filename, int* num_layers);
 void fp_forward(FP_Layer* layers, int num_layers, const float* input, float* output, int input_size, int output_size);
-int fp_count_layers(const char* filename);
 
 
 #endif // FP_MODEL_H

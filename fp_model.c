@@ -2,27 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h> 
-
-
-int fp_count_layers(const char* filename) {
-    FILE* file = fopen(filename, "r");
-    if (!file) {
-        perror("Error opening file");
-        return -1;
-    }
-
-    char line[MAX_TXT_LINES];
-    int layer_count = 0;
-
-    while (fgets(line, sizeof(line), file)) {
-        if (strstr(line, "linear")) {
-            layer_count++;
-        }
-    }
-
-    fclose(file);
-    return layer_count;
-}
+#include "utils.h"
 
 FP_Layer* fp_read_model(const char* filename, int* num_layers) {
     FILE* file = fopen(filename, "r");
@@ -33,7 +13,7 @@ FP_Layer* fp_read_model(const char* filename, int* num_layers) {
 
     char line[MAX_TXT_LINES];
     int layer_count = 0;
-    int max_layers = fp_count_layers(filename); // Số lớp tối đa
+    int max_layers = count_layers(filename); 
     FP_Layer *layers = (FP_Layer *)malloc(max_layers * sizeof(FP_Layer));
 
     while (fgets(line, sizeof(line), file)) {

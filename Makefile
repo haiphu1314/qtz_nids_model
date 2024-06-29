@@ -1,6 +1,6 @@
 TARGET = test
 
-SRCS = test.c bnn_model.c fp_model.c
+SRCS = test.c tnn_model.c tbn_model.c bnn_model.c fp_model.c utils.c
 
 OBJS = $(SRCS:.c=.o)
 

@@ -24,25 +24,7 @@ typedef struct {
     float *weights;
 } Layer;
 
-int count_layers(const char* filename) {
-    FILE* file = fopen(filename, "r");
-    if (!file) {
-        perror("Error opening file");
-        return -1;
-    }
 
-    char line[1024];
-    int layer_count = 0;
-
-    while (fgets(line, sizeof(line), file)) {
-        if (strstr(line, "linear")) {
-            layer_count++;
-        }
-    }
-
-    fclose(file);
-    return layer_count;
-}
 
 // Hàm đọc weight từ file txt
 Layer* read_model(const char* filename, int* num_layers) {
