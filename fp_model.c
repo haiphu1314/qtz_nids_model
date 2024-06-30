@@ -11,7 +11,7 @@ FP_Layer* fp_read_model(const char* filename, int* num_layers) {
         exit(EXIT_FAILURE);
     }
 
-    char line[MAX_TXT_LINES];
+    char line[MAX_CHARS_LINE];
     int layer_count = 0;
     int max_layers = count_layers(filename); 
     FP_Layer *layers = (FP_Layer *)malloc(max_layers * sizeof(FP_Layer));

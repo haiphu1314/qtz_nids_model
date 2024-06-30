@@ -12,7 +12,7 @@ TNN_Layer* tnn_read_model(const char* filename, int* num_layers) {
         exit(EXIT_FAILURE);
     }
     int sizeint = 8 * sizeof(int);
-    char line[MAX_TXT_LINES];
+    char line[MAX_CHARS_LINE];
     int layer_count = 0;
     int max_layers = count_layers(filename);
     TNN_Layer *layers = (TNN_Layer *)malloc(max_layers * sizeof(TNN_Layer));
@@ -82,7 +82,7 @@ int tnn_forward(TNN_Layer* layers, int num_layers, ttype* input, ttype* output) 
                 next_input[i/sizeint].bit_0 |= 1<<(i%sizeint);
             }
             if(l == num_layers-1){
-                out_pd[i/sizeint] = cnt_one-cnt_minus_one;
+                out_pd[i] = cnt_one-cnt_minus_one;
                 // printf("Output %d\n", out_pd[i/32]);
             }
         }
@@ -95,12 +95,13 @@ int tnn_forward(TNN_Layer* layers, int num_layers, ttype* input, ttype* output) 
     int sizeint_output = (output_size%sizeint) ? (output_size/sizeint + 1)  : (output_size/sizeint);
     memcpy(output, curr_input, sizeint_output * sizeof(ttype));
     free(curr_input);
-    return 0;
-    // int max_index = 0;
-    // for (int i = 1; i < output_size; i++) {
-    //     if (out_pd[i] > out_pd[max_index]) {
-    //         max_index = i;
-    //     }
-    // }
-    // return max_index;
+    // return 0;
+    // // like sofmax, Find best value for prediction
+    int max_index = 0;
+    for (int i = 0; i < output_size; i++) {
+        if (out_pd[i] > out_pd[max_index]) {
+            max_index = i;
+        }
+    }
+    return max_index;
 }

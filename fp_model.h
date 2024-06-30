@@ -1,6 +1,6 @@
 #ifndef FP_MODEL_H
 #define FP_MODEL_H
-#define MAX_TXT_LINES 10240
+#include "utils.h"
 
 typedef struct {
     int input_channel;

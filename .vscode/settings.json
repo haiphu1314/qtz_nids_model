@@ -30,6 +30,10 @@
         "__bit_reference": "c",
         "ios": "c",
         "nmmintrin.h": "c",
-        "tnn_model.h": "c"
+        "tnn_model.h": "c",
+        "tbn_model.h": "c",
+        "testcase.h": "c",
+        "chrono": "c",
+        "linear.h": "c"
     }
 }

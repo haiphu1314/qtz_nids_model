@@ -4,7 +4,6 @@
 #include <string.h> 
 
 #define USE_MSSE
-#define MAX_TXT_LINES 10240
 #ifdef USE_MSSE
     #include <nmmintrin.h>
     int bitCount(int n){
@@ -32,7 +31,7 @@ int count_layers(const char* filename) {
         return -1;
     }
 
-    char line[MAX_TXT_LINES];
+    char line[MAX_CHARS_LINE];
     int layer_count = 0;
 
     while (fgets(line, sizeof(line), file)) {
