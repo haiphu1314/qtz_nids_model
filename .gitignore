@@ -135,3 +135,7 @@ dmypy.json
 
 pretrained/
 .idea/
+
+.vscode/
+__init__.py
+*.pt
