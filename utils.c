@@ -1,3 +1,9 @@
+/**************************************************************************
+ * Author: Hai Phu
+ * Email: haiphu@hcmut.edu.vn
+ * Date: July 2, 2024
+ **************************************************************************/
+
 #include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,4 +48,74 @@ int count_layers(const char* filename) {
 
     fclose(file);
     return layer_count;
+}
+
+int**** allocate_4d_int_array(int dim1, int dim2, int dim3, int dim4) {
+    int ****array = (int****)malloc(dim1 * sizeof(int***));
+    for (int i = 0; i < dim1; ++i) {
+        array[i] = (int***)malloc(dim2 * sizeof(int**));
+        for (int j = 0; j < dim2; ++j) {
+            array[i][j] = (int**)malloc(dim3 * sizeof(int*));
+            for (int k = 0; k < dim3; ++k) {
+                array[i][j][k] = (int*)malloc(dim4 * sizeof(int));
+            }
+        }
+    }
+    return array;
+}
+
+float**** allocate_4d_float_array(int dim1, int dim2, int dim3, int dim4) {
+    float ****array = (float****)malloc(dim1 * sizeof(float***));
+    for (int i = 0; i < dim1; ++i) {
+        array[i] = (float***)malloc(dim2 * sizeof(float**));
+        for (int j = 0; j < dim2; ++j) {
+            array[i][j] = (float**)malloc(dim3 * sizeof(float*));
+            for (int k = 0; k < dim3; ++k) {
+                array[i][j][k] = (float*)malloc(dim4 * sizeof(float));
+            }
+        }
+    }
+    return array;
+}
+
+
+int*** allocate_3d_int_array(int dim1, int dim2, int dim3) {
+    int ***array = (int***)malloc(dim1 * sizeof(int**));
+    for (int i = 0; i < dim1; ++i) {
+        array[i] = (int**)malloc(dim2 * sizeof(int*));
+        for (int j = 0; j < dim2; ++j) {
+            array[i][j] = (int*)malloc(dim3 * sizeof(int));
+        }
+    }
+    return array;
+}
+
+float*** allocate_3d_float_array(int dim1, int dim2, int dim3) {
+    float ***array = (float***)malloc(dim1 * sizeof(float**));
+    for (int i = 0; i < dim1; ++i) {
+        array[i] = (float**)malloc(dim2 * sizeof(float*));
+        for (int j = 0; j < dim2; ++j) {
+            array[i][j] = (float*)malloc(dim3 * sizeof(float));
+        }
+    }
+    return array;
+}
+
+ttype*** allocate_3d_ttype_array(int dim1, int dim2, int dim3) {
+    ttype ***array = (ttype***)malloc(dim1 * sizeof(ttype**));
+    for (int i = 0; i < dim1; ++i) {
+        array[i] = (ttype**)malloc(dim2 * sizeof(ttype*));
+        for (int j = 0; j < dim2; ++j) {
+            array[i][j] = (ttype*)malloc(dim3 * sizeof(ttype));
+        }
+    }
+    return array;
+}
+
+float** allocate_2d_float_array(int dim1, int dim2) {
+    float **array = (float**)malloc(dim1 * sizeof(float*));
+    for (int i = 0; i < dim1; ++i) {
+        array[i] = (float*)malloc(dim2 * sizeof(float));
+    }
+    return array;
 }

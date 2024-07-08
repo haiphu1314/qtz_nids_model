@@ -1,6 +1,6 @@
 TARGET = test
 
-SRCS = test.c tnn_model.c tbn_model.c bnn_model.c fp_model.c utils.c testcase.c
+SRCS = linear.c conv.c model.c test.c utils.c testcase.c
 
 OBJS = $(SRCS:.c=.o)
 
@@ -9,7 +9,7 @@ CFLAGS = -Wall -Wextra -std=c11
 
 all: $(TARGET)
 	./test
-	rm -f $(TARGET) $(OBJS)
+	rm -f $(TARGET) *.o
 
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)

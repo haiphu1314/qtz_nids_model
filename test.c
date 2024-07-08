@@ -2,238 +2,96 @@
 #include <stdlib.h>
 #include <string.h> 
 #include <time.h>
-#include "bnn_model.h"
-#include "tnn_model.h"
-#include "tbn_model.h"
-#include "fp_model.h"
-#include "linear.h"
-
+#include "model.h"
 #include "testcase.h"
+#include <time.h>
 
-#define DEBUG 99
-#define NO_TESTS 100000
 #define NUM_TESTCASES 84000
-#define DATA_SIZE 13
-#define DATA_SIZE_IN_INT 1
+#define NO_TESTS 1
+// #define NO_TESTS 100000
 
-
-void generateRandomArray(float arr[], int size) {
-    for (int i = 0; i < size; i++) {
-        arr[i] = rand() % 100; 
+int power(int base, int exponent) {
+    int result = 1;
+    for(int i = 0; i < exponent; i++) {
+        result *= base;
     }
+    return result;
 }
-
-int createBitmaskFromArray(float arr[], int size) {
-    int bitmask = 0;
-    for (int i = 0; i < size; i++) {
-        if (arr[i] < 0) {
-            bitmask |= (1 << i);
-        }
-    }
-    return bitmask;
+float getRandomNumber() {
+    return (float)rand() / RAND_MAX * 2.0f - 1.0f;
 }
-
 int main() {
-    #if DEBUG == 1
-        // Latency
-        int num_layers;
-        BNN_Layer* layers_bnn = bnn_read_model("bnn_model_parameters.txt", &num_layers);
-        int output[1];
+    
+    layer_node* model = NULL;
+    
+    conv_layer *conv1 = create_conv_layer(1, 32, 3, 1, 1, 1, 0.2948492467403412, TNN);
+    model = add_layer(model, CONV, "conv1", conv1);
+    conv_layer *conv2 = create_conv_layer(32, 64, 3, 1, 1, 1, 0.7563087940216064, TNN);
+    model = add_layer(model, CONV, "conv2", conv2);
+    linear_layer *linear1 = create_linear_layer(3136, 128, 6.522428512573242, TNN);
+    model = add_layer(model, LINEAR, "linear1", linear1);
+    linear_layer *linear2 = create_linear_layer(128, 3, 22.42291831970215, TNN);
+    model = add_layer(model, LINEAR, "linear2", linear2);
 
-        srand(time(NULL));
-        float input_raw[DATA_SIZE];
-        int input[1];
+    load_weight_from_txt(model, "tcnn_model_parameters.txt");
 
-        printf("====================START=======================\n\n");
-        srand(time(NULL));
+    // conv_layer *conv1 = create_conv_layer(1, 32, 3, 1, 1, 1, 0.0, BNN);
+    // model = add_layer(model, CONV, "conv1", conv1);
+    // conv_layer *conv2 = create_conv_layer(32, 64, 3, 1, 1, 1, 0.0, BNN);
+    // model = add_layer(model, CONV, "conv2", conv2);
+    // linear_layer *linear1 = create_linear_layer(3136, 128, 0.0, BNN);
+    // model = add_layer(model, LINEAR, "linear1", linear1);
+    // linear_layer *linear2 = create_linear_layer(128, 3, 0.0, BNN);
+    // model = add_layer(model, LINEAR, "linear2", linear2);
 
-        clock_t start, end;
-        start = clock();
-        generateRandomArray(input_raw, DATA_SIZE);
-        for(int i = 0; i < NO_TESTS; i++){
-            input[1] = createBitmaskFromArray(input_raw, DATA_SIZE);
-            // printf("Generating %.8x\n",input[1]);
-            bnn_forward(layers_bnn, num_layers, input, output);
+    // load_weight_from_txt(model, "bcnn_model_parameters.txt");
+
+    int input_height = 7;
+    int input_width = 7;
+
+    float*** input = allocate_3d_float_array(1, input_height, input_width);
+    for (int c=0; c<1; c++){
+        for (int h=0; h<input_height; h++){
+            for (int w=0; w<input_width; w++){
+                input[c][h][w] = power(-1,w);
+            }
         }
-        end = clock();
-        double time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
-
-        printf("Thời gian thực thi mô hình BNN: %f giây\n\n", time_taken);
-
-        // Acc
-        Testcase testcases[NUM_TESTCASES];
-        int num_testcases = 0;
-        read_testcases("testcase.txt", testcases, &num_testcases);
-        int sizeint = 8 * sizeof(int);
-        int correct = 0;
-        start = clock();
-        for (int i = 0; i < num_testcases; i++) {
-            int input_acc[DATA_SIZE_IN_INT] = {0};
-            for(int k = 0; k < DATA_SIZE; k++){
-                if (testcases[i].data[k] < 0){
-                    input_acc[k/sizeint] |= 1<<(k%sizeint);
+    }
+    conv_input input_quant;
+    input_quant.b = allocate_3d_int_array(1, input_height, input_width);
+    for (int c = 0; c < 1; c++){
+        for (int h = 0; h < input_height; h++){
+            for (int w = 0; w < input_width; w++){
+                if(input[c][h][w] < 0.0){
+                    input_quant.b[c/SIZEINT][h][w] |= 1 << (c%SIZEINT);
                 }
             }
-            int predict = bnn_forward(layers_bnn, num_layers, input_acc, output);
-            if (predict == testcases[i].label) {
-                correct +=1;
-            }
-            // else{
-            //     printf("Failed at testcase %d\n", i);                
-            // }
         }
-        end = clock();
-        float test_accuracy = 100.0 * (float)correct / (float)NUM_TESTCASES;
-        printf("Test Accuracy: %f\n",test_accuracy);
-        time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
-        printf("Accuracy test time: %f giây\n\n", time_taken);
-        printf("====================END=======================\n");
-        
-    #elif DEBUG == 2
-        int num_layers;
-        ttype output_tn[1];
-        ttype input_tn[1];
-        input_tn->bit_0 = 0x0390;
-        input_tn->bit_1 = 0x0020;
-        printf("====================START=======================\n\n");
+    }
+    srand(time(NULL));
+    clock_t start, end;
+    start = clock();
 
-        TNN_Layer* layers_tnn = tnn_read_model("tnn_model_parameters.txt", &num_layers);
-        srand(time(NULL));
-        clock_t start, end;
-        start = clock();
-        for(int i = 0; i < NO_TESTS; i++){
-            tnn_forward(layers_tnn, num_layers, input_tn, output_tn);
-        }
-        end = clock();
-        double time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
-
-        printf("Thời gian thực thi mô hình TNN: %f giây\n\n", time_taken);
-        printf("====================END=======================\n");
-
-        // Acc
-        Testcase testcases[NUM_TESTCASES];
-        int num_testcases = 0;
-        read_testcases("testcase.txt", testcases, &num_testcases);
-        int sizeint = 8 * sizeof(int);
-        int correct = 0;
-        start = clock();
-        for (int i = 0; i < num_testcases; i++) {
-            ttype input_acc[DATA_SIZE_IN_INT] = {0};
-            for(int k = 0; k < DATA_SIZE; k++){
-                float thres = layers_tnn[0].thres;
-                if (testcases[i].data[k] >=thres){
-                    input_acc[k/sizeint].bit_1 |= 1<<(k%sizeint);
-                }
-                else if (testcases[i].data[k] <= -(thres)){
-                    input_acc[k/sizeint].bit_0 |= 1<<(k%sizeint);                   
+    for (int ct =0; ct<NO_TESTS; ct++){
+        // float*** input = allocate_3d_float_array(1, input_height, input_width);
+        input = conv_forward(conv1, input, input_height, input_width);
+        // printf("%f, %f, %f \n", input[0][0][0], input[0][0][1], input[0][0][2]);
+        input = conv_forward(conv2, input, input_height, input_width);
+        float input_linear[input_height*input_width*64];
+        int i=0;
+        for (int c=0; c<64; c++){
+            for (int h=0; h<7; h++){
+                for (int w=0; w<7; w++){
+                    input_linear[i] = input[c][h][w];
+                    i+=1;
                 }
             }
-            int predict = tnn_forward(layers_tnn, num_layers, input_acc, output_tn);
-            if (predict == testcases[i].label) {
-                correct +=1;
-            }
-            // else{
-            //     printf("Failed at testcase %d\n", i);                
-            // }
         }
-        end = clock();
-        float test_accuracy = 100.0 * (float)correct / (float)NUM_TESTCASES;
-        printf("Test Accuracy: %f\n",test_accuracy);
-        time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
-        printf("Accuracy test time: %f giây\n\n", time_taken);
-        printf("====================END=======================\n");
-    #elif DEBUG == 3
-        int num_layers;
-        ttype output_tn[1];
-        ttype input_tn[1];
-        input_tn->bit_0 = 0x0390;
-        input_tn->bit_1 = 0x0020;
-        printf("====================START=======================\n\n");
-
-        TBN_Layer* layers_tbn = tbn_read_model("tbn_model_parameters.txt", &num_layers);
-        srand(time(NULL));
-        clock_t start, end;
-        start = clock();
-        for(int i = 0; i < NO_TESTS; i++){
-            tbn_forward(layers_tbn, num_layers, input_tn, output_tn);
-        }
-        end = clock();
-        double time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
-        // tbn_forward(layers_tbn, num_layers, input_tn, output_tn);
-        printf("Thời gian thực thi mô hình TBN: %f giây\n\n", time_taken);
-        printf("====================END=======================\n");
-        // Acc
-        Testcase testcases[NUM_TESTCASES];
-        int num_testcases = 0;
-        read_testcases("testcase.txt", testcases, &num_testcases);
-        int sizeint = 8 * sizeof(int);
-        int correct = 0;
-        start = clock();
-        for (int i = 0; i < num_testcases; i++) {
-            ttype input_acc[DATA_SIZE_IN_INT] = {0};
-            for(int k = 0; k < DATA_SIZE; k++){
-                float thres = layers_tbn[0].thres;
-                if (testcases[i].data[k] >=thres){
-                    input_acc[k/sizeint].bit_1 |= 1<<(k%sizeint);
-                }
-                else if (testcases[i].data[k] <= -(thres)){
-                    input_acc[k/sizeint].bit_0 |= 1<<(k%sizeint);                   
-                }
-            }
-            int predict = tbn_forward(layers_tbn, num_layers, input_acc, output_tn);
-            if (predict == testcases[i].label) {
-                correct +=1;
-            }
-            // else{
-            //     printf("Failed at testcase %d\n", i);                
-            // }
-        }
-        end = clock();
-        float test_accuracy = 100.0 * (float)correct / (float)NUM_TESTCASES;
-        printf("Test Accuracy: %f\n",test_accuracy);
-        time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
-        printf("Accuracy test time: %f giây\n\n", time_taken);
-        printf("====================END=======================\n");
-    #elif DEBUG == 4
-        float input_raw[DATA_SIZE];
-        float input_fp[1];
-        float output_fp[1];
-        int num_layers;
-        printf("====================START=======================\n\n");
-        FP_Layer* layers_fp = fp_read_model("fp_model_parameters.txt", &num_layers);
-        srand(time(NULL));
-        clock_t start, end;
-        start = clock();
-        generateRandomArray(input_raw, DATA_SIZE);
-        for(int i = 0; i < NO_TESTS; i++){
-            fp_forward(layers_fp, num_layers, input_fp, output_fp, 1, 1);
-        }
-        end = clock();
-        double time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
-
-        printf("Thời gian thực thi mô hình FP: %f giây\n\n", time_taken);
-        printf("====================END=======================\n");        
-    #elif DEBUG == 99
-    // int num_layers;
-    // BNN_Layer* layers_bnn = bnn_read_model("bnn_model_parameters.txt", &num_layers);
-
-    // clock_t start, end;
-    // int c = 1;
-    // int d = 111;
-    // start = clock();
-    // printf("====================START=======================\n\n");
-    // for (int i = 0; i <100000; i++){
-    //     for (int j = 0; j < 1164; j++){
-    //         int a = c^d;
-    //         bitCount(a);
-    //     }
-    // }
-    // end = clock();
-    // double time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
-    // printf("Thời gian bitcount: %f giây\n\n", time_taken);
-    // return 0;
-    int num_layers;
-    linear_tnn_layer* layers_tnn = read_linear_model("tnn_model_parameters.txt", &num_layers, 0);
-    #endif
-
+        input = linear_forward(linear1, input_linear);
+        float *output = linear_forward(linear2, input);
+        printf("%f, %f, %f \n", output[0], output[1], output[2]);
+    }
+    end = clock();
+    double time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("Thời gian thực thi mô hình TBN: %f giây\n\n", time_taken);
 }
