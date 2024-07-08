@@ -10,7 +10,7 @@
 #include <string.h> 
 #include "utils.h"
 
-conv_layer* create_conv_layer(int input_channel, int output_channel, int kernel_size, int stride, int padding, int dilation, float input_thres, quant_type quant) {
+conv_layer* create_conv_layer(int input_channel, int output_channel, int kernel_size, int stride, int padding, int dilation, quant_type quant) {
     conv_layer *layer = (conv_layer *)malloc(sizeof(conv_layer));
     layer->input_channel = input_channel;
     layer->output_channel = output_channel;
@@ -19,7 +19,7 @@ conv_layer* create_conv_layer(int input_channel, int output_channel, int kernel_
     layer->padding = padding;
     layer->dilation = dilation;
     
-    layer->input_thres = input_thres;
+    layer->input_thres = 0.0;
     layer->quant = quant;
     int intput_sizeint = (input_channel % SIZEINT) == 0 ? (input_channel/SIZEINT): (input_channel/SIZEINT+1);
     int dim1 = output_channel;
@@ -121,10 +121,16 @@ float*** conv_forward(conv_layer* layer, float ***input, int input_height, int i
                         else if(input[c][h][w] <= -input_thres){
                             input_quant.t[c/SIZEINT][h][w].bit_0 |= 1 << (c%SIZEINT);
                         }
-
                     }
                 }
             }
+            // if(input_channel==32){
+            //     printf("i_raw: %f\n", input[6][0][1]);
+            // }
+            // printf("i0: %.08x %.08x %.08x\n",input_quant.t[0][0][0].bit_0, input_quant.t[0][0][1].bit_0, input_quant.t[0][0][2].bit_0);
+            // printf("i1: %.08x %.08x %.08x\n",input_quant.t[0][0][0].bit_1, input_quant.t[0][0][1].bit_1, input_quant.t[0][0][2].bit_1);
+
+            
             break;
         default:
             fprintf(stderr, "conv_forward: Unknown quantization type\n");
@@ -194,13 +200,17 @@ float*** conv_forward(conv_layer* layer, float ***input, int input_height, int i
             break;
 
         case TNN:
-            int check = 0;
+            // int check = 0;
             for (int co = 0; co < output_channel; co++){
                 for (int y = 0; y < output_height; y++){
                     for (int x = 0; x < output_width; x++) {
                         int cnt_minus_one = 0;
                         int cnt_one = 0;
                         int cnt_zero = 0;
+                        // if(check == 0) {
+                        //     printf("sizeint_input: %d\n", sizeint_input);
+                        //     check = 1;
+                        // }
                         for (int kc = 0; kc < sizeint_input; kc++) {
                             for (int ky = 0; ky < kernel_size; ky++) {
                                 for (int kx = 0; kx < kernel_size; kx++){
@@ -210,49 +220,39 @@ float*** conv_forward(conv_layer* layer, float ***input, int input_height, int i
                                         cnt_zero +=1;
                                     }
                                     else{
+                                        // if(check == 0 && kc == 1){
+                                        //     printf("layer->weights_0: %.08x\n",layer->weights_0[0][0][0][0]);
+                                        //     printf("layer->weights_1: %.08x\n\n",layer->weights_1[0][0][0][0]);
+
+                                        //     printf("layer->weights_0: %.08x\n",layer->weights_0[0][1][0][0]);
+                                        //     printf("layer->weights_1: %.08x\n\n",layer->weights_1[0][1][0][0]);
+                                        //     check = 1;
+                                        // }
                                         int result_bit0 = (input_quant.t[kc][padded_y][padded_x].bit_1 & layer->weights_0[co][kc][ky][kx]) | (input_quant.t[kc][padded_y][padded_x].bit_0 & layer->weights_1[co][kc][ky][kx]);
                                         int result_bit1 = (input_quant.t[kc][padded_y][padded_x].bit_1 & layer->weights_1[co][kc][ky][kx]) | (input_quant.t[kc][padded_y][padded_x].bit_0 & layer->weights_0[co][kc][ky][kx]);
                                         cnt_minus_one += bitCount(result_bit0);
                                         cnt_one += bitCount(result_bit1);
                                     }
-                                
+                                // printf("%d %d %d %d\n",co,kc,ky,kx);
                                 }
                             }
                         }
                         output[co][y][x] = (float)(cnt_one-cnt_minus_one);
-                        if(check<3){
-                            check += 1;
-                        }
                     }
                 }
             }
-            printf("%f %f %f %f %f\n",output[0][1][0], output[0][1][1], output[0][1][2], output[0][1][3], output[0][1][4]);
-            printf("\n");
-            for(int c =0; c<1; c++){ //output_channel
-                for (int kc = 0; kc < sizeint_input; kc++) {
-                    for (int ky = 0; ky < kernel_size; ky++) {
-                        for (int kx = 0; kx < kernel_size; kx++){
-                            printf("0x%.08x ", layer->weights_0[c][kc][ky][kx]);
-                        }
-                        printf("\n");
-                    }
-                    printf("\n");
-                }    
-            }
-            for(int c =0; c<1; c++){ //output_channel
-                for (int kc = 0; kc < sizeint_input; kc++) {
-                    for (int ky = 0; ky < kernel_size; ky++) {
-                        for (int kx = 0; kx < kernel_size; kx++){
-                            printf("0x%.08x ", layer->weights_1[c][kc][ky][kx]);
-                        }
-                        printf("\n");
-                    }
-                    printf("\n");
-                }    
-            }
+            // if (check<1){
+            //     printf("w07: %.08x %.08x %.08x\n",layer->weights_0[7][0][0][0], layer->weights_0[7][0][0][1], layer->weights_0[7][0][0][2]);
+            //     printf("w07: %.08x %.08x %.08x\n",layer->weights_0[7][0][1][0], layer->weights_0[7][0][1][1], layer->weights_0[7][0][1][2]);
+            //     printf("w07: %.08x %.08x %.08x\n",layer->weights_0[7][0][2][0], layer->weights_0[7][0][2][1], layer->weights_0[7][0][2][2]);
 
-
+            //     printf("w17: %.08x %.08x %.08x\n",layer->weights_1[7][0][0][0], layer->weights_1[7][0][0][1], layer->weights_1[7][0][0][2]);
+            //     printf("w17: %.08x %.08x %.08x\n",layer->weights_1[7][0][1][0], layer->weights_1[7][0][1][1], layer->weights_1[7][0][1][2]);
+            //     printf("w17: %.08x %.08x %.08x\n",layer->weights_1[7][0][2][0], layer->weights_1[7][0][2][1], layer->weights_1[7][0][2][2]);
+            //     check = 1;
+            // }
             return output;
             break;
     }
+    return output;
 }

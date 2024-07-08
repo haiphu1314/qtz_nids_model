@@ -21,7 +21,7 @@ typedef union {
     int *b;
 } linear_input;
 
-linear_layer* create_linear_layer(int input_channel, int output_channel, float input_thres, quant_type quant);
+linear_layer* create_linear_layer(int input_channel, int output_channel, quant_type quant);
 void free_linear_layer(linear_layer *layer);
 float* linear_forward(linear_layer* layer, float* input);
 

@@ -10,12 +10,12 @@
 #include <stdlib.h>
 #include <string.h> 
 
-linear_layer* create_linear_layer(int input_channel, int output_channel, float input_thres, quant_type quant) {
+linear_layer* create_linear_layer(int input_channel, int output_channel, quant_type quant) {
     linear_layer *layer = (linear_layer *)malloc(sizeof(linear_layer));
     layer->input_channel = input_channel;
     layer->output_channel = output_channel;
     layer->quant = quant;
-    layer->input_thres = input_thres;
+    layer->input_thres = 0.0;
 
     int weight_size = (input_channel % SIZEINT) == 0 ? (input_channel/SIZEINT)* output_channel : (input_channel/SIZEINT+1)* output_channel;
     switch(quant){
@@ -141,4 +141,5 @@ float* linear_forward(linear_layer* layer, float* input) {
             return output;
             break;
     }
+    return output;
 }

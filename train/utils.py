@@ -285,26 +285,33 @@ def save_model_parameters_to_txt(model, file_path):
                     f.write(f'quant_type: 2\n')
                     quant_write = 2
                 f.write(f'input_thres: {input_thres[cnt]}\n')
+                namen = name.split('.')[0]
+                # param = getattr(getattr(model, namen).weight_quantizer, 'forward')(param)
+                param = _ternary(param, weight_thres[cnt])
                 for param_e in param:
+                    # param_e = getattr(getattr(model, namen).weight_quantizer, 'forward')(param_e)
+                    # param_e = _ternary(param_e, weight_thres[cnt])
+                    param_padding = torch.zeros(32*int(np.ceil(param_e.shape[0]/32)), param_e.shape[1],param_e.shape[2])
+                    param_padding[0:param_e.shape[0],:,:] = param_e
+                    param_e = param_padding
                     sichannel = int(np.ceil(param_e.shape[0]/32))
                     for c in range(sichannel):
                         for q in range(quant_write):
                             for i in range(param_e.shape[1]):
                                 for j in range(param_e.shape[2]):
                                     if(quant_type[cnt] == 'BNN' or quant_type[cnt] == 'TBN'):
-                                        hex_conv = convert_and_concatenate(_binary(param_e[sichannel*0:sichannel*32, i, j]))
+                                        hex_conv = convert_and_concatenate(_binary(param_e[(c+1)*32-32:(c+1)*32, i, j]))
                                         if j == param_e.shape[2]-1:
                                             f.write(f'0x{hex_conv}')
                                         else:
                                             f.write(f'0x{hex_conv}, ')
                                     elif(quant_type[cnt] == 'TNN'):
-                                        namen = name.split('.')[0]
-                                        hex_conv_bit0, hex_conv_bit1 = convert_and_concatenate_tnn(getattr(getattr(model, namen).weight_quantizer, 'forward')(param_e[sichannel*0:sichannel*32, i, j]))
+                                        hex_conv_bit0, hex_conv_bit1 = convert_and_concatenate_tnn(param_e[(c+1)*32-32:(c+1)*32, i, j])
                                         if(q == 0):
                                             if j == param_e.shape[2]-1:
                                                 f.write(f'0x{hex_conv_bit0}')
                                             else:
-                                                f.write(f'0x{hex_conv_bit0}, ')                
+                                                f.write(f'0x{hex_conv_bit0}, ')
                                         elif(q == 1):
                                             if j == param_e.shape[2]-1:
                                                 f.write(f'0x{hex_conv_bit1}')
@@ -336,8 +343,9 @@ def save_model_parameters_to_txt(model, file_path):
                             f.write(f'0x{segment}\n')
                     f.write(f'\n')
                 elif(quant_type[cnt] == 'TNN'):
+                    # param = getattr(getattr(model, namen).weight_quantizer, 'forward')(param)
                     param = _ternary(param, weight_thres[cnt])
-                    print(name)
+                    # print(name)
                     for param_e in param:
                         hex_conv_bit0, hex_conv_bit1 = convert_and_concatenate_tnn(param_e)
                         segments0 = [hex_conv_bit0[i:i+8] for i in range(0, len(hex_conv_bit0), 8)]

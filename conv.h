@@ -26,7 +26,7 @@ typedef union {
     int ***b;
 } conv_input;
 
-conv_layer* create_conv_layer(int input_channel, int output_channel, int kernel_size, int stride, int padding, int dilation, float input_thres, quant_type quant);
+conv_layer* create_conv_layer(int input_channel, int output_channel, int kernel_size, int stride, int padding, int dilation, quant_type quant);
 float*** conv_forward(conv_layer* layer, float ***input, int input_height, int input_width);
 
 #endif // CONV_H

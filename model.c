@@ -121,10 +121,10 @@ void load_weight_from_txt(layer_node *model, const char* filename) {
                         fprintf(stderr, "quantization method of %s mismatch!\n",current->layer_name);
                         exit(EXIT_FAILURE);                        
                     }
-                    if(thres != current->linear->input_thres){
-                        fprintf(stderr, "input threshold of %s mismatch!\n",current->layer_name);
-                        exit(EXIT_FAILURE);                        
-                    }                    
+                    // if(thres != current->linear->input_thres){
+                    //     fprintf(stderr, "input threshold of %s mismatch!\n",current->layer_name);
+                    //     exit(EXIT_FAILURE);                        
+                    // }                    
                     break;
                 }
                 current = current->next;
@@ -134,6 +134,7 @@ void load_weight_from_txt(layer_node *model, const char* filename) {
                 printf("Layer %s does not exist", layer_name);
                 exit(EXIT_FAILURE);
             }
+            current->linear->input_thres = thres;
             int weight_size = (input_channel % SIZEINT) == 0 ? (input_channel/SIZEINT)*output_channel : (input_channel/SIZEINT+1)*output_channel;
             if (quant == TNN){
                 for (int i = 0; i < weight_size; ++i) {
@@ -198,10 +199,10 @@ void load_weight_from_txt(layer_node *model, const char* filename) {
                         fprintf(stderr, "quantization method of %s mismatch!\n",current->layer_name);
                         exit(EXIT_FAILURE);                        
                     }
-                    if(thres != current->conv->input_thres){
-                        fprintf(stderr, "Input threshold of layer %s is %f, but in the .txt file, it is %f.\n",current->layer_name, current->conv->input_thres, thres);
-                        exit(EXIT_FAILURE);                        
-                    }                    
+                    // if(thres != current->conv->input_thres){
+                    //     fprintf(stderr, "Input threshold of layer %s is %f, but in the .txt file, it is %f.\n",current->layer_name, current->conv->input_thres, thres);
+                    //     exit(EXIT_FAILURE);                        
+                    // }                    
                     break;
                 }
                 
@@ -211,14 +212,12 @@ void load_weight_from_txt(layer_node *model, const char* filename) {
                 printf("Layer %s does not exist", layer_name);
                 exit(EXIT_FAILURE);
             }
+            current->conv->input_thres = thres;
             int weight_size = (input_channel % SIZEINT) == 0 ? (input_channel/SIZEINT) : (input_channel/SIZEINT+1);
-            // if(quant == TNN){
-            //     weight_size = weight_size*2;
-            // }
             int qb = (quant == TNN) ? 2 : 1;
             for (int oc = 0; oc < output_channel; oc++) {
-                for (int q = 0; q < qb; q++){
-                    for(int w = 0; w < weight_size; w++){
+                for(int w = 0; w < weight_size; w++){
+                    for (int q = 0; q < qb; q++){
                         for (int kh = 0; kh < kernel_size; kh++) {
                             int values[10];
                             switch (kernel_size){
