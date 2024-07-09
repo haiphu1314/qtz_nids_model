@@ -358,3 +358,26 @@ def save_model_parameters_to_txt(model, file_path):
                     f.write(f'\n')
             cnt+=1        
         return 0
+
+class QConvTranspose2d(nn.ConvTranspose2d):
+    qa_config = {}
+    qw_config = {}
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, output_padding=0, groups=1, bias=True, dilation=1, padding_mode='zeros', quant='BNN'):
+        super().__init__(in_channels, out_channels, kernel_size, stride, padding, output_padding, groups, bias, dilation, padding_mode)
+        
+        if quant == 'BNN':
+            self.input_quantizer = BinaryActivation()
+            self.weight_quantizer = BinaryActivation()
+        elif quant == 'TNN':
+            self.input_quantizer = Ternary()
+            self.weight_quantizer = Ternary()
+        elif quant == 'TBN':
+            self.input_quantizer = Ternary()
+            self.weight_quantizer = BinaryActivation()    
+
+    def forward(self, input_f):
+        input_t = self.input_quantizer(input_f)
+        weight_b = self.weight_quantizer(self.weight)
+        out = F.conv_transpose2d(input_t, weight_b, self.bias, self.stride, self.padding, self.output_padding, self.groups, self.dilation)
+        return out

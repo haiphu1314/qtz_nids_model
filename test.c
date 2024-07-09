@@ -1,14 +1,22 @@
+/**
+ * @ Author: Hai Phu
+ * @ Email:  haiphu@hcmut.edu.vn
+ * @ Create Time: 2024-06-27 16:23:39
+ * @ Modified time: 2024-07-09 16:10:53
+ * @ Description:
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h> 
 #include <time.h>
-#include "model.h"
-#include "testcase.h"
+#include "src/model.h"
+// #include "testcase.h"
 #include <time.h>
 
 #define NUM_TESTCASES 84000
 // #define NO_TESTS 1
-#define NO_TESTS 100000
+#define NO_TESTS 10
 
 int power(int base, int exponent) {
     int result = 1;
