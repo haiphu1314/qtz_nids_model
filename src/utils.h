@@ -12,7 +12,8 @@ typedef struct {
 typedef enum {
     BNN,
     TBN,
-    TNN
+    TNN,
+    FP
 } quant_type;
 
 int bitCount(int n);

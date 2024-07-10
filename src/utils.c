@@ -2,7 +2,7 @@
  * @ Author: Hai Phu
  * @ Email:  haiphu@hcmut.edu.vn
  * @ Create Time: 2024-06-29 13:56:10
- * @ Modified time: 2024-07-09 11:37:16
+ * @ Modified time: 2024-07-10 19:41:31
  * @ Description:
  */
 
@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <string.h> 
 
-#define USE_MSSE
+// #define USE_MSSE
 #ifdef USE_MSSE
     #include <nmmintrin.h>
     int bitCount(int n){

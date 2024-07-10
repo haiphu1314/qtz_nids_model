@@ -26,11 +26,10 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset, random_split
-
+import sys
 def _ternary(x: torch.Tensor, delta: float):
     return (x >= delta).float() - (x <= -delta).float()
-def _binary(x: torch.Tensor):
-    return (x >= 0).float() - (x < 0).float()
+
 class _ternary_py(torch.autograd.Function):
     @staticmethod
     def ternary_backward(grad_output: torch.Tensor, x: torch.Tensor, delta: float, order: int, threshold: float):
@@ -95,7 +94,124 @@ class Ternary(torch.nn.Module):
 
     def extra_repr(self):
         return ", ".join(["{}={}".format(k, v) for k, v in self.config.items()])
+
+
+# def _ternary(x: torch.Tensor, delta: torch.Tensor):
     
+#     return (x >= delta.expand_as(x)).float() - (x <= -delta.expand_as(x)).float()
+
+# class _ternary_py(torch.autograd.Function):
+#     @staticmethod
+#     def ternary_backward(grad_output: torch.Tensor, x: torch.Tensor, delta: torch.Tensor, order: int, threshold: torch.Tensor):
+#         scale = 2 * delta
+#         # assert torch.prod((threshold <= scale).float())
+#         # tmp = torch.zeros_like(grad_output)
+#         # tmp += ((x >= -threshold.expand_as(x)) & (x <= threshold.expand_as(x))).float() * order * \
+#         #        (torch.fmod(x / delta.expand_as(x) + 3, 2) - 1).abs().pow(order - 1)
+#         # return grad_output * tmp
+         
+#         grad_input = grad_output.clone()
+#         # print(x.shape)
+#         # print(delta.shape)
+#         # print(threshold.shape)
+#         # print(grad_input.shape)
+
+#         grad_input[x.abs() > threshold] = 0 
+#         grad_input[x.abs() <= threshold] = (grad_output*(-torch.sin(2*3.14*4*delta.expand_as(x))).abs())[x.abs() <= threshold]
+#         # grad_delta = torch.sum(grad_output * (x >= -threshold.expand_as(x)) & (x <= threshold.expand_as(x)).float() * order, dim=0) 
+#         return grad_input
+
+#     @staticmethod
+#     def forward(ctx, *inputs) -> torch.Tensor:
+#         input_f, running_delta, delta, momentum, training, ctx.order = inputs
+#         device = input_f.device
+
+#         if momentum > 0:
+#             if training:
+#                 ctx.delta = torch.sum(torch.abs(input_f), dim=0) * (delta / input_f.shape[0])  # = delta * |input_f|_1 / n
+#                 running_delta.data = momentum * ctx.delta.to(device) + (1.0 - momentum) * running_delta.data.to(device)
+#             else:
+#                 ctx.delta = running_delta.data.to(device)
+#         else:
+#             ctx.delta = delta.to(device)
+#         # input_t = _ternary(input_f, ctx.delta) * (2 * ctx.delta)
+#         input_t = _ternary(input_f, ctx.delta)
+#         ctx.save_for_backward(input_f)
+#         return input_t
+
+#     @staticmethod
+#     def backward(ctx, *grad_outputs):
+#         grad_output, = grad_outputs
+#         input_f, = ctx.saved_tensors
+#         grad_input = _ternary_py.ternary_backward(grad_output, input_f, ctx.delta, ctx.order, 2. * ctx.delta)
+#         return grad_input, None, None, None, None, None, None, None, None, None
+
+
+# def ternary(input_f: torch.Tensor, running_delta : torch.Tensor, delta : torch.Tensor, momentum, training, order):
+#     return _ternary_py.apply(input_f, running_delta, delta, momentum, training, order)
+
+
+# class Ternary(torch.nn.Module):
+#     def __init__(self):
+#         super(Ternary, self).__init__()
+#         config = {}
+#         self.config = config
+#         self.delta = config.setdefault("delta", 0.5)
+#         # self.delta = torch.ones(1)/2
+#         self.first_time = 1
+#         self.momentum = config.setdefault("momentum", 0.01)
+#         self.track_running_stats = config.setdefault("track_running_stats", True)
+#         self.order = config.setdefault('order', 2)
+#         # self.use_scale = config.setdefault('use_scale', True)
+#         assert self.momentum <= 1 and self.order > 0 and self.delta > 0
+#         self.register_buffer("running_delta", torch.zeros(1))
+#         self.reset_parameters()
+
+#     def reset_parameters(self):
+#         if self.momentum > 0:
+#             self.running_delta.copy_(self.delta * 0.7979)
+#         else:
+#             self.running_delta.copy_(self.delta)
+
+#     def forward(self, input_f):
+#         if(self.first_time == 1):
+#             self.delta = torch.full(input_f.shape[1:], 0.5).to(input_f.device)
+#             self.register_buffer("running_delta", torch.zeros(input_f.shape[1:]))
+#             self.first_time = 0
+#         return ternary(input_f, self.running_delta, self.delta, self.momentum,
+#                        self.training and self.track_running_stats, self.order)
+
+#     def extra_repr(self):
+#         return ", ".join(["{}={}".format(k, v) for k, v in self.config.items()])
+    
+
+class QConv2d(torch.nn.Conv2d):
+    qa_config = {}
+    qw_config = {}
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=False,
+                 padding_mode='zeros', quant = 'BNN'):
+        super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode)
+        
+        if quant == 'BNN':
+            self.input_quantizer = BinaryActivation()
+            self.weight_quantizer = BinaryActivation()
+        elif quant == 'TNN':
+            self.input_quantizer = Ternary()
+            self.weight_quantizer = Ternary()
+        elif quant == 'TBN':
+            self.input_quantizer = Ternary()
+            self.weight_quantizer = BinaryActivation()    
+
+    def forward(self, input_f):
+        input_t = self.input_quantizer(input_f)
+        weight_b = self.weight_quantizer(self.weight)
+        out = F.conv2d(input_t, weight_b, self.bias, self.stride, self.padding, self.dilation, self.groups)
+        return out
+
+def _binary(x: torch.Tensor):
+    return (x >= 0).float() - (x < 0).float()
+
 class binary_weight(torch.autograd.Function):
     @staticmethod
     def forward(ctx, weight_f):
@@ -158,6 +274,29 @@ class QConv2d(torch.nn.Conv2d):
         input_t = self.input_quantizer(input_f)
         weight_b = self.weight_quantizer(self.weight)
         out = F.conv2d(input_t, weight_b, self.bias, self.stride, self.padding, self.dilation, self.groups)
+        return out
+
+class QConvTranspose2d(nn.ConvTranspose2d):
+    qa_config = {}
+    qw_config = {}
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, output_padding=0, groups=1, bias=True, dilation=1, padding_mode='zeros', quant='BNN'):
+        super().__init__(in_channels, out_channels, kernel_size, stride, padding, output_padding, groups, bias, dilation, padding_mode)
+        
+        if quant == 'BNN':
+            self.input_quantizer = BinaryActivation()
+            self.weight_quantizer = BinaryActivation()
+        elif quant == 'TNN':
+            self.input_quantizer = Ternary()
+            self.weight_quantizer = Ternary()
+        elif quant == 'TBN':
+            self.input_quantizer = Ternary()
+            self.weight_quantizer = BinaryActivation()    
+
+    def forward(self, input_f):
+        input_t = self.input_quantizer(input_f)
+        weight_b = self.weight_quantizer(self.weight)
+        out = F.conv_transpose2d(input_t, weight_b, self.bias, self.stride, self.padding, self.output_padding, self.groups, self.dilation)
         return out
     
 class QLinear(torch.nn.Linear):
@@ -266,7 +405,7 @@ def save_model_parameters_to_txt(model, file_path):
     with open(file_path, 'w') as f:
         for name, param in model.named_parameters():
             layer_name = name.split('.')[0]
-            if 'conv' in name:
+            if 'conv' in name or 'dconv' in name or 'tconv' in name:
                 f.write(f'{name}\n')
                 f.write(f'layer_name: {layer_name}\n')
                 f.write(f'input_channel: {param.shape[1]}\n')
@@ -359,25 +498,3 @@ def save_model_parameters_to_txt(model, file_path):
             cnt+=1        
         return 0
 
-class QConvTranspose2d(nn.ConvTranspose2d):
-    qa_config = {}
-    qw_config = {}
-
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, output_padding=0, groups=1, bias=True, dilation=1, padding_mode='zeros', quant='BNN'):
-        super().__init__(in_channels, out_channels, kernel_size, stride, padding, output_padding, groups, bias, dilation, padding_mode)
-        
-        if quant == 'BNN':
-            self.input_quantizer = BinaryActivation()
-            self.weight_quantizer = BinaryActivation()
-        elif quant == 'TNN':
-            self.input_quantizer = Ternary()
-            self.weight_quantizer = Ternary()
-        elif quant == 'TBN':
-            self.input_quantizer = Ternary()
-            self.weight_quantizer = BinaryActivation()    
-
-    def forward(self, input_f):
-        input_t = self.input_quantizer(input_f)
-        weight_b = self.weight_quantizer(self.weight)
-        out = F.conv_transpose2d(input_t, weight_b, self.bias, self.stride, self.padding, self.output_padding, self.groups, self.dilation)
-        return out

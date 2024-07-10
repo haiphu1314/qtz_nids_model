@@ -2,7 +2,7 @@
  * @ Author: Hai Phu
  * @ Email:  haiphu@hcmut.edu.vn
  * @ Create Time: 2024-06-27 14:22:38
- * @ Modified time: 2024-07-09 16:10:11
+ * @ Modified time: 2024-07-10 19:21:49
  * @ Description:
  */
 
@@ -32,13 +32,22 @@ layer_node* add_layer(layer_node *model, layer_type type, char* layer_name, void
     layer_node *new_node = (layer_node*) malloc(sizeof(layer_node));
     new_node->layer_type = type;
     strcpy(new_node->layer_name, layer_name);
-    if (type == LINEAR) {
+    switch (type)
+    {
+    case LINEAR:
         new_node->linear = (linear_layer*) layer;
         new_node->conv = NULL;
-    } else if (type == CONV) {
+        break;
+
+    case CONV:
         new_node->conv = (conv_layer*) layer;
         new_node->linear = NULL;
+        break;
+        
+    default:
+        break;
     }
+
     if (model == NULL) {
         return new_node;
     }
@@ -158,13 +167,13 @@ void load_weight_from_txt(layer_node *model, const char* filename) {
             int weight_size = (input_channel % SIZEINT) == 0 ? (input_channel/SIZEINT)*output_channel : (input_channel/SIZEINT+1)*output_channel;
             if (quant == TNN){
                 for (int i = 0; i < weight_size; ++i) {
-                    fscanf(file, "0x%x\n", &current->linear->weights_0[i]);
-                    fscanf(file, "0x%x\n", &current->linear->weights_1[i]);
+                    fscanf(file, "0x%x\n", &current->linear->weights_t0[i]);
+                    fscanf(file, "0x%x\n", &current->linear->weights_t1[i]);
                 }
             }
-            else{
+            else if (quant == TBN || quant == BNN){
                 for (int i = 0; i < weight_size; ++i) {
-                    fscanf(file, "0x%x\n", &current->linear->weights[i]);
+                    fscanf(file, "0x%x\n", &current->linear->weights_b[i]);
                 }
             }
 
@@ -275,20 +284,20 @@ void load_weight_from_txt(layer_node *model, const char* filename) {
                                     printf("Unsupported kernel_size: %d\n", kernel_size);
                                     break;
                             }
-                            if(quant != TNN){
+                            if(quant == TBN || quant == BNN){
                                 for(int kw = 0; kw<kernel_size; kw++){
-                                    current->conv->weights[oc][w][kh][kw] = values[kw];
+                                    current->conv->weights_b[oc][w][kh][kw] = values[kw];
                                 }
                             }
-                            else{
+                            else if(quant == TNN){
                                 if(q == 0){
                                     for(int kw = 0; kw<kernel_size; kw++){
-                                        current->conv->weights_0[oc][w][kh][kw] = values[kw];
+                                        current->conv->weights_t0[oc][w][kh][kw] = values[kw];
                                     }
                                 }
                                 else if(q == 1){
                                     for(int kw = 0; kw<kernel_size; kw++){
-                                        current->conv->weights_1[oc][w][kh][kw] = values[kw];
+                                        current->conv->weights_t1[oc][w][kh][kw] = values[kw];
                                     }
                                 }
                             }
